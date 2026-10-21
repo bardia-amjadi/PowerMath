@@ -113,14 +113,14 @@ class CalcViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------------------------------------------------------------- editor
-    private fun setEditor(e: EditorState) {
+    private fun updateEditor(e: EditorState) {
         editor = e
         schedulePreview()
     }
 
     fun setExpression(text: String) {
         justEvaluated = false
-        setEditor(EditorState.of(text))
+        updateEditor(EditorState.of(text))
     }
 
     fun insert(text: String) {
@@ -130,7 +130,7 @@ class CalcViewModel(app: Application) : AndroidViewModel(app) {
             base = if (first != null && first in "+-*/^%") EditorState.of("ans") else Editor.clearAll()
             justEvaluated = false
         }
-        setEditor(Editor.insert(base, text))
+        updateEditor(Editor.insert(base, text))
     }
 
     fun toggleShift() { modifiers = modifiers.copy(shift = !modifiers.shift) }
@@ -143,14 +143,14 @@ class CalcViewModel(app: Application) : AndroidViewModel(app) {
             is KeyAction.Insert -> insert(action.text)
             is KeyAction.Wrap -> {
                 if (editor.text.isBlank()) insert(action.prefix)
-                else { justEvaluated = false; val t = action.prefix + editor.text.trim() + ")"; setEditor(EditorState.of(t)); evaluate(t) }
+                else { justEvaluated = false; val t = action.prefix + editor.text.trim() + ")"; updateEditor(EditorState.of(t)); evaluate(t) }
             }
-            KeyAction.Backspace -> { justEvaluated = false; setEditor(Editor.backspace(editor)) }
-            KeyAction.ClearEntry -> { justEvaluated = false; setEditor(Editor.clearEntry(editor)) }
-            KeyAction.ClearAll -> { justEvaluated = false; setEditor(Editor.clearAll()); result = ResultState.None }
+            KeyAction.Backspace -> { justEvaluated = false; updateEditor(Editor.backspace(editor)) }
+            KeyAction.ClearEntry -> { justEvaluated = false; updateEditor(Editor.clearEntry(editor)) }
+            KeyAction.ClearAll -> { justEvaluated = false; updateEditor(Editor.clearAll()); result = ResultState.None }
             KeyAction.Left -> { justEvaluated = false; editor = Editor.left(editor) }
             KeyAction.Right -> { justEvaluated = false; editor = Editor.right(editor) }
-            KeyAction.Negate -> { justEvaluated = false; setEditor(Editor.negate(editor)) }
+            KeyAction.Negate -> { justEvaluated = false; updateEditor(Editor.negate(editor)) }
             KeyAction.Equals -> evaluate()
             is KeyAction.Open -> dialog = action.dialog
             is KeyAction.Go -> if (action.screen == Screen.GRAPH) openGraph(editor.text) else screen = action.screen
