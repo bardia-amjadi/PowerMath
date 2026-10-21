@@ -67,6 +67,8 @@ class CalcViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- calculator state (kept here so it survives screen changes and rotation) ----
     var screen by mutableStateOf(Screen.CALCULATOR)
+    /** Stack trace of the previous run's crash, if any (shown once in a dialog). */
+    var lastCrash by mutableStateOf<String?>(null)
     var editor by mutableStateOf(EditorState())
         private set
     var modifiers by mutableStateOf(ModifierState())

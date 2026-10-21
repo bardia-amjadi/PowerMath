@@ -72,6 +72,15 @@ import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.MathContext
 
+/** coerceIn that never throws when the range is inverted (tiny canvases). */
+private fun Float.clampTo(lo: Float, hi: Float): Float = if (hi < lo) lo else coerceIn(lo, hi)
+
+/** Draws text from a pre-measured layout, so it can never crash on a label that sits at or past the canvas edge. */
+private fun DrawScope.drawLabel(tm: TextMeasurer, text: String, x: Float, y: Float, style: TextStyle) {
+    val layout = tm.measure(text, style)
+    drawText(layout, topLeft = Offset(x, y))
+}
+
 private class Curve(val id: Int, val colorIndex: Int, val segments: List<List<Pt>>)
 
 private fun fmtNum(d: Double): String {
@@ -187,9 +196,10 @@ private fun GraphCanvas(vm: CalcViewModel, angle: AngleMode, modifier: Modifier)
         if (size.width == 0) return@LaunchedEffect
         val samples = (size.width / 2).coerceIn(200, 1200)
         curves = withContext(Dispatchers.Default) {
-            fns.filter { it.visible && it.compiled != null }.map { g ->
+            fns.filter { it.visible && it.compiled != null }.mapNotNull { g ->
                 val c = g.compiled!!
-                Curve(g.id, g.colorIndex, GraphEngine.sample({ x -> c.eval(x) }, vp, samples))
+                try { Curve(g.id, g.colorIndex, GraphEngine.sample({ x -> c.eval(x) }, vp, samples)) }
+                catch (e: Exception) { null }   // a function that fails to evaluate is skipped instead of crashing the app
             }
         }
     }
@@ -217,7 +227,7 @@ private fun GraphCanvas(vm: CalcViewModel, angle: AngleMode, modifier: Modifier)
                         val g = vm.graphFns.firstOrNull { it.visible && it.compiled != null }
                         if (g != null && w > 0f) {
                             val x = vm.viewport.toWorldX(off.x, w)
-                            val y = g.compiled!!.eval(x)
+                            val y = try { g.compiled!!.eval(x) } catch (e: Exception) { Double.NaN }
                             trace = if (y.isFinite()) Triple(g.id, x, y) else null
                         }
                     }
@@ -237,6 +247,7 @@ private fun GraphCanvas(vm: CalcViewModel, angle: AngleMode, modifier: Modifier)
                 for (p in seg) {
                     val sx = vp.toScreenX(p.x, w)
                     val sy = vp.toScreenY(p.y, h).coerceIn(-50_000f, 50_000f)
+                    if (!sx.isFinite() || !sy.isFinite()) continue
                     if (first) { path.moveTo(sx, sy); first = false } else path.lineTo(sx, sy)
                 }
             }
@@ -268,9 +279,9 @@ private fun DrawScope.marker(vp: Viewport, p: Pt, color: Color, bg: Color, hollo
     val r = 5.dp.toPx()
     drawCircle(color, r, Offset(sx, sy))
     if (hollow) drawCircle(bg, r * 0.5f, Offset(sx, sy))
-    val tx = (sx + 8.dp.toPx()).coerceIn(2f, (size.width - 90.dp.toPx()).coerceAtLeast(2f))
-    val ty = (sy - 20.dp.toPx()).coerceIn(2f, (size.height - 18.dp.toPx()).coerceAtLeast(2f))
-    drawText(tm, label, topLeft = Offset(tx, ty), style = TextStyle(fontSize = 11.sp, color = labelColor))
+    val tx = (sx + 8.dp.toPx()).clampTo(2f, size.width - 90.dp.toPx())
+    val ty = (sy - 20.dp.toPx()).clampTo(2f, size.height - 18.dp.toPx())
+    drawLabel(tm, label, tx, ty, TextStyle(fontSize = 11.sp, color = labelColor))
 }
 
 private fun DrawScope.drawGrid(vp: Viewport, gridColor: Color, axisColor: Color, labelColor: Color, tm: TextMeasurer) {
@@ -291,15 +302,15 @@ private fun DrawScope.drawGrid(vp: Viewport, gridColor: Color, axisColor: Color,
     if (showXAxis) drawLine(axisColor, Offset(0f, axisY), Offset(w, axisY), 2f)
 
     val style = TextStyle(fontSize = 10.sp, color = labelColor)
-    val labelY = (if (showXAxis) axisY else if (axisY < 0f) 0f else h - 14.dp.toPx()).coerceIn(0f, h - 14.dp.toPx()) + 2.dp.toPx()
-    val labelX = (if (showYAxis) axisX else if (axisX < 0f) 0f else w - 34.dp.toPx()).coerceIn(0f, w - 34.dp.toPx()) + 4.dp.toPx()
+    val labelY = (if (showXAxis) axisY else if (axisY < 0f) 0f else h - 14.dp.toPx()).clampTo(0f, h - 14.dp.toPx()) + 2.dp.toPx()
+    val labelX = (if (showYAxis) axisX else if (axisX < 0f) 0f else w - 34.dp.toPx()).clampTo(0f, w - 34.dp.toPx()) + 4.dp.toPx()
     for (x in xTicks) {
         if (Math.abs(x) < xStep * 1e-9) continue
-        drawText(tm, GraphEngine.tickLabel(x, xStep), topLeft = Offset(vp.toScreenX(x, w) + 2.dp.toPx(), labelY), style = style)
+        drawLabel(tm, GraphEngine.tickLabel(x, xStep), vp.toScreenX(x, w) + 2.dp.toPx(), labelY, style)
     }
     for (y in yTicks) {
         if (Math.abs(y) < yStep * 1e-9) continue
-        drawText(tm, GraphEngine.tickLabel(y, yStep), topLeft = Offset(labelX, vp.toScreenY(y, h) - 12.dp.toPx()), style = style)
+        drawLabel(tm, GraphEngine.tickLabel(y, yStep), labelX, vp.toScreenY(y, h) - 12.dp.toPx(), style)
     }
-    if (showXAxis && showYAxis) drawText(tm, "0", topLeft = Offset(axisX + 4.dp.toPx(), axisY + 2.dp.toPx()), style = style)
+    if (showXAxis && showYAxis) drawLabel(tm, "0", axisX + 4.dp.toPx(), axisY + 2.dp.toPx(), style)
 }

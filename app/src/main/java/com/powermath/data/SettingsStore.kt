@@ -9,13 +9,22 @@ import kotlinx.coroutines.flow.StateFlow
 
 enum class ThemePref(val label: String) { SYSTEM("System"), DARK("Dark"), LIGHT("Light") }
 
+/** Accent colour of the whole app. */
+enum class AccentPref(val label: String) { YELLOW("Yellow"), RED("Red"), BLUE("Blue"), GREEN("Green"), PURPLE("Purple") }
+
+/** Size presets for the keypad and the expression text. */
+enum class SizePref(val label: String, val scale: Float) { SMALL("Small", 0.85f), NORMAL("Normal", 1f), LARGE("Large", 1.2f) }
+
 data class AppSettings(
     val mode: ResultMode = ResultMode.EXACT,
     val decimals: Int = 10,
     val sigDigits: Int = 10,
     val angle: AngleMode = AngleMode.DEG,
     val theme: ThemePref = ThemePref.DARK,
-    val haptics: Boolean = true
+    val haptics: Boolean = true,
+    val accent: AccentPref = AccentPref.YELLOW,
+    val keypadSize: SizePref = SizePref.NORMAL,
+    val textSize: SizePref = SizePref.NORMAL
 ) {
     val format: FormatSettings get() = FormatSettings(mode, decimals, sigDigits)
 }
@@ -35,7 +44,10 @@ class SettingsStore(context: Context) {
         sigDigits = prefs.getInt("sig", 10).coerceIn(1, 50),
         angle = enumOf("angle", AngleMode.DEG),
         theme = enumOf("theme", ThemePref.DARK),
-        haptics = prefs.getBoolean("haptics", true)
+        haptics = prefs.getBoolean("haptics", true),
+        accent = enumOf("accent", AccentPref.YELLOW),
+        keypadSize = enumOf("keypadSize", SizePref.NORMAL),
+        textSize = enumOf("textSize", SizePref.NORMAL)
     )
 
     fun update(transform: (AppSettings) -> AppSettings) {
@@ -44,6 +56,11 @@ class SettingsStore(context: Context) {
         prefs.edit()
             .putString("mode", s.mode.name).putInt("decimals", s.decimals).putInt("sig", s.sigDigits)
             .putString("angle", s.angle.name).putString("theme", s.theme.name).putBoolean("haptics", s.haptics)
+            .putString("accent", s.accent.name).putString("keypadSize", s.keypadSize.name).putString("textSize", s.textSize.name)
             .apply()
     }
+
+    /** Crash report saved by the uncaught-exception handler; shown once on the next launch. */
+    fun saveCrash(text: String) { prefs.edit().putString("last_crash", text.take(6000)).commit() }
+    fun takeCrash(): String? = prefs.getString("last_crash", null)?.also { prefs.edit().remove("last_crash").apply() }
 }

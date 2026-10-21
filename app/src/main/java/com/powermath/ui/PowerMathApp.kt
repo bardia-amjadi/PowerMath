@@ -10,6 +10,11 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBars
@@ -18,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -66,7 +72,8 @@ private fun handlePhysicalKey(e: KeyEvent, vm: CalcViewModel): Boolean {
 fun PowerMathApp(vm: CalcViewModel) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
-    PowerMathTheme(settings.theme) {
+    var showSplash by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(true) }
+    PowerMathTheme(settings.theme, settings.accent) {
         val focus = remember { FocusRequester() }
         LaunchedEffect(vm.screen, vm.dialog) {
             if (vm.screen == Screen.CALCULATOR && vm.dialog == null) runCatching { focus.requestFocus() }
@@ -99,5 +106,26 @@ fun PowerMathApp(vm: CalcViewModel) {
             }
         }
         DialogHost(vm)
+        vm.lastCrash?.let { trace ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { vm.lastCrash = null },
+                title = { androidx.compose.material3.Text("The app closed unexpectedly") },
+                text = {
+                    androidx.compose.foundation.layout.Column {
+                        androidx.compose.material3.Text("Sorry about that. Copy the details and send them to the developer so it can be fixed.",
+                            fontSize = 13.sp)
+                        androidx.compose.material3.Text(trace.take(1500),
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(top = 8.dp).heightIn(max = 240.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()))
+                    }
+                },
+                confirmButton = { androidx.compose.material3.TextButton(onClick = { clipboard.setText(AnnotatedString(trace)); vm.lastCrash = null }) { androidx.compose.material3.Text("Copy and close") } },
+                dismissButton = { androidx.compose.material3.TextButton(onClick = { vm.lastCrash = null }) { androidx.compose.material3.Text("Close") } }
+            )
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showSplash,
+            exit = fadeOut(androidx.compose.animation.core.tween(700))
+        ) { SplashScreen { showSplash = false } }
     }
 }

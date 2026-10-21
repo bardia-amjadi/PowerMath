@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,40 +71,43 @@ fun CalculatorScreen(vm: CalcViewModel, onCopy: (String) -> Unit, onPaste: () ->
         }
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
-        val compact = maxHeight < 640.dp
-        val keyHeight = ((maxHeight * 0.5f) / 6).coerceIn(40.dp, 64.dp)
+    BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+        val keyHeight = (((maxHeight * 0.40f) / 6) * settings.keypadSize.scale).coerceIn(32.dp, 66.dp)
+        var menuOpen by remember { mutableStateOf(false) }
 
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // ---- header: title, nav, angle mode ----
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!compact) Text("Power Math", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 6.dp))
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // ---- slim top bar: angle, result format, menu ----
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Chip(if (settings.angle == AngleMode.DEG) "DEG" else "RAD", { vm.toggleAngle() }, active = true,
                     desc = "Angle mode: ${if (settings.angle == AngleMode.DEG) "degrees" else "radians"}. Tap to switch")
+                Chip(when (settings.mode) { ResultMode.EXACT -> "Fraction"; ResultMode.DECIMAL -> "Decimal"; ResultMode.SCIENTIFIC -> "Sci" },
+                    { vm.setMode(when (settings.mode) { ResultMode.EXACT -> ResultMode.DECIMAL; ResultMode.DECIMAL -> ResultMode.SCIENTIFIC; ResultMode.SCIENTIFIC -> ResultMode.EXACT }) },
+                    desc = "Result format. Tap to change between fraction, decimal and scientific")
+                Spacer(Modifier.weight(1f))
                 Chip("Graph", { vm.openGraph(vm.editor.text) })
-                Chip("History", { vm.screen = Screen.HISTORY })
-                Chip("Workspace", { vm.screen = Screen.WORKSPACE })
-                Chip("Settings", { vm.screen = Screen.SETTINGS })
+                Box {
+                    Chip("Menu ▾", { menuOpen = true }, desc = "More: history, workspace, settings")
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(text = { Text("History") }, onClick = { menuOpen = false; vm.screen = Screen.HISTORY })
+                        DropdownMenuItem(text = { Text("Workspace (variables & functions)") }, onClick = { menuOpen = false; vm.screen = Screen.WORKSPACE })
+                        DropdownMenuItem(text = { Text("Settings") }, onClick = { menuOpen = false; vm.screen = Screen.SETTINGS })
+                    }
+                }
             }
-            Segmented(
-                listOf(ResultMode.EXACT to "Exact / Fraction", ResultMode.DECIMAL to "Decimal", ResultMode.SCIENTIFIC to "Scientific"),
-                settings.mode, { vm.setMode(it) }, Modifier.fillMaxWidth()
-            )
 
-            // ---- display ----
-            Display(vm, settings.format, onCopy, Modifier.weight(1f).fillMaxWidth())
+            // ---- display: takes all remaining space ----
+            Display(vm, settings.format, settings.textSize.scale, onCopy, Modifier.weight(1f).fillMaxWidth())
 
             // ---- modifiers + keypad ----
             ModifierRow(vm.modifiers, vm::toggleShift, vm::toggleAlt, vm::toggleCtrl)
             val rows = KeyLayouts.layer(vm.modifiers, vm.wsVars.map { it.name }, vm.wsFuncs.map { it.name })
-            Keypad(rows, keyHeight, settings.haptics, onKey, Modifier.padding(bottom = 6.dp))
+            Keypad(rows, keyHeight, settings.haptics, onKey, Modifier.padding(bottom = 4.dp))
         }
     }
 }
 
 @Composable
-private fun Display(vm: CalcViewModel, fmt: FormatSettings, onCopy: (String) -> Unit, modifier: Modifier) {
+private fun Display(vm: CalcViewModel, fmt: FormatSettings, textScale: Float, onCopy: (String) -> Unit, modifier: Modifier) {
     val cs = MaterialTheme.colorScheme
     Column(modifier) {
         vm.toast?.let { msg ->
@@ -126,23 +132,23 @@ private fun Display(vm: CalcViewModel, fmt: FormatSettings, onCopy: (String) -> 
                 }
             }
             Text(
-                text, fontSize = if (ed.text.length > 30) 22.sp else 30.sp, textAlign = TextAlign.End,
+                text, fontSize = (if (ed.text.length > 30) 24.sp else 34.sp) * textScale, textAlign = TextAlign.End, color = cs.onSurface,
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Expression: ${ed.text}" }
             )
         }
 
         // ---- formatted preview + live result ----
         if (ed.text.isNotEmpty()) {
-            Text(Pretty.format(ed.text), fontSize = 15.sp, color = cs.onSurfaceVariant, textAlign = TextAlign.End, maxLines = 2, modifier = Modifier.fillMaxWidth())
+            Text(Pretty.format(ed.text), fontSize = 14.sp, color = cs.onSurfaceVariant, textAlign = TextAlign.End, maxLines = 2, modifier = Modifier.fillMaxWidth())
             vm.livePreview?.let { Text("= $it", fontSize = 16.sp, color = cs.primary.copy(alpha = 0.75f), textAlign = TextAlign.End, maxLines = 1, modifier = Modifier.fillMaxWidth()) }
         }
 
-        ResultCard(vm, fmt, onCopy)
+        ResultCard(vm, fmt, textScale, onCopy)
     }
 }
 
 @Composable
-private fun ResultCard(vm: CalcViewModel, fmt: FormatSettings, onCopy: (String) -> Unit) {
+private fun ResultCard(vm: CalcViewModel, fmt: FormatSettings, textScale: Float, onCopy: (String) -> Unit) {
     val cs = MaterialTheme.colorScheme
     var showSteps by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(top = 6.dp).animateContentSize()) {
@@ -154,11 +160,11 @@ private fun ResultCard(vm: CalcViewModel, fmt: FormatSettings, onCopy: (String) 
             is ResultState.Success -> {
                 val lines = remember(r, fmt) { r.outcome.render(fmt) }
                 val multi = lines.size > 1
-                Column(Modifier.fillMaxWidth().heightIn(max = 190.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.End) {
+                Column(Modifier.fillMaxWidth().heightIn(max = 150.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.End) {
                     for (l in lines) {
                         Text(
                             l,
-                            fontSize = if (multi) 22.sp else if (l.length > 16) 28.sp else 40.sp,
+                            fontSize = (if (multi) 22.sp else if (l.length > 16) 28.sp else 40.sp) * textScale,
                             fontWeight = FontWeight.Light, color = cs.onSurface, textAlign = TextAlign.End,
                             modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Result: $l" }
                         )

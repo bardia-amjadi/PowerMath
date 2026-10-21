@@ -1,6 +1,14 @@
 package com.powermath.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,10 +50,14 @@ private fun KeyButton(def: KeyDef, height: Dp, modifier: Modifier, haptics: Bool
         else -> cs.surface to cs.onSurface
     }
     val haptic = LocalHapticFeedback.current
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.92f else 1f, spring(dampingRatio = 0.55f, stiffness = 600f), label = "keyScale")
     Surface(
         onClick = { if (haptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick() },
-        modifier = modifier.height(height).semantics { contentDescription = def.description },
-        shape = RoundedCornerShape(14.dp),
+        interactionSource = source,
+        modifier = modifier.height(height).graphicsLayer { scaleX = scale; scaleY = scale }.semantics { contentDescription = def.description },
+        shape = RoundedCornerShape(12.dp),
         color = bg,
         contentColor = fg,
         border = if (def.kind == KeyKind.FUNCTION || def.kind == KeyKind.ACTION) BorderStroke(1.dp, cs.outline.copy(alpha = 0.5f)) else null
@@ -64,9 +76,9 @@ private fun KeyButton(def: KeyDef, height: Dp, modifier: Modifier, haptics: Bool
 
 @Composable
 fun Keypad(rows: List<List<KeyDef>>, keyHeight: Dp, haptics: Boolean, onKey: (KeyAction) -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         for (row in rows) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (k in row) KeyButton(k, keyHeight, Modifier.weight(k.weight), haptics) { onKey(k.action) }
             }
         }
@@ -78,30 +90,28 @@ private fun RowScope.ModifierButton(label: String, active: Boolean, desc: String
     val cs = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
-        modifier = Modifier.weight(1f).height(38.dp).semantics { contentDescription = desc; selected = active },
+        modifier = Modifier.weight(1f).height(30.dp).semantics { contentDescription = desc; selected = active },
         shape = RoundedCornerShape(12.dp),
-        color = if (active) cs.primary else cs.surface,
+        color = animateColorAsState(if (active) cs.primary else cs.surface, label = "modBg").value,
         contentColor = if (active) cs.onPrimary else cs.onSurfaceVariant,
         border = BorderStroke(1.dp, if (active) cs.primary else cs.outline)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(label + if (active) "  ●" else "", fontSize = 14.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
+            Text(label + if (active) " ●" else "", fontSize = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
         }
     }
 }
 
-/** Three persistent, visible modifier toggles plus the name of the active key layer. */
+/** Three persistent, visible modifier toggles; the active layer name is shown inline (no extra line). */
 @Composable
 fun ModifierRow(state: ModifierState, onShift: () -> Unit, onAlt: () -> Unit, onCtrl: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ModifierButton("Shift", state.shift, "Shift modifier, advanced functions", onShift)
-            ModifierButton("Alt", state.alt, "Alt modifier, variables and symbols", onAlt)
-            ModifierButton("Ctrl", state.ctrl, "Ctrl modifier, workspace actions", onCtrl)
-        }
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        ModifierButton("Shift", state.shift, "Shift modifier, advanced functions", onShift)
+        ModifierButton("Alt", state.alt, "Alt modifier, variables and symbols", onAlt)
+        ModifierButton("Ctrl", state.ctrl, "Ctrl modifier, workspace actions", onCtrl)
         Text(
-            state.layerName, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 3.dp, start = 4.dp)
+            state.layerName.substringBefore(" · "), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.weight(1.1f).semantics { contentDescription = "Active key layer: ${state.layerName}" }
         )
     }
 }
@@ -130,12 +140,12 @@ fun Chip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, acti
     val cs = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
-        modifier = modifier.height(32.dp).semantics { contentDescription = desc },
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.height(30.dp).semantics { contentDescription = desc },
+        shape = RoundedCornerShape(15.dp),
         color = if (active) cs.primaryContainer else cs.surface,
         contentColor = if (active) cs.onPrimaryContainer else cs.onSurface,
         border = BorderStroke(1.dp, cs.outline.copy(alpha = 0.6f))
-    ) { Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1) } }
+    ) { Box(Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1) } }
 }
 
 @Composable
