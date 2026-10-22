@@ -3,7 +3,7 @@ package com.powermath.viewmodel
 import com.powermath.math.ErrorKind
 import com.powermath.math.Outcome
 
-enum class Screen { CALCULATOR, GRAPH, WORKSPACE, HISTORY, SETTINGS }
+enum class Screen { CALCULATOR, GRAPH, WORKSPACE, HISTORY, SETTINGS, TOOLS }
 
 /** Modifier state machine: three independent persistent toggles; their combination selects the key layer. */
 data class ModifierState(val shift: Boolean = false, val alt: Boolean = false, val ctrl: Boolean = false) {

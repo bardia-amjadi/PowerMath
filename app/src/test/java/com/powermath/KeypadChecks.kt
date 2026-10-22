@@ -20,6 +20,7 @@ object KeypadChecks {
         try { block(); results.add(Result(name, null)) } catch (e: Throwable) { results.add(Result(name, "${e.javaClass.simpleName}: ${e.message}")) }
     }
     private fun yes(c: Boolean, m: String) { if (!c) throw AssertionError(m) }
+    private fun eq(expected: Any?, actual: Any?, ctx: String = "") { if (expected != actual) throw AssertionError("expected <$expected> but was <$actual> $ctx") }
 
     private val allCombos = (0 until 8).map { ModifierState(it and 1 != 0, it and 2 != 0, it and 4 != 0) }
     private fun layer(m: ModifierState) = KeyLayouts.layer(m, listOf("a", "rate"), listOf("f", "g"))
@@ -33,6 +34,7 @@ object KeypadChecks {
             KeyAction.ClearEntry -> Editor.clearEntry(state)
             KeyAction.ClearAll -> Editor.clearAll()
             KeyAction.Negate -> Editor.negate(state)
+            KeyAction.Fraction -> Editor.fraction(state)
             KeyAction.Left -> Editor.left(state)
             KeyAction.Right -> Editor.right(state)
             else -> throw AssertionError("unexpected action for $label: $a")
@@ -47,6 +49,20 @@ object KeypadChecks {
 
     fun run(): List<Result> {
         results.clear()
+        t("fraction key: 3 a⁄b 4 = 3/4, and ◀ ▶ hop over the divider") {
+            var st = EditorState()
+            st = press(st, "3"); st = press(st, "a⁄b"); eq("(3)/()", st.text, "after fraction key"); eq(5, st.cursor, "cursor in denominator")
+            st = press(st, "4"); eq("(3)/(4)", st.text, "typed")
+            eq("3/4", Calculator.process(st.text, Workspace(), CalcSettings()).renderText(FormatSettings()), "value")
+            st = press(st, "◀"); st = press(st, "◀"); eq(2, st.cursor, "left hops the divider")
+            st = press(st, "▶"); eq(5, st.cursor, "▶ hops the divider back into the denominator")
+        }
+        t("fraction key with an empty editor gives an empty template; adding fractions works") {
+            var st = press(EditorState(), "a⁄b"); eq("()/()", st.text); eq(1, st.cursor)
+            st = press(st, "1"); st = press(st, "▶"); st = press(st, "2"); eq("(1)/(2)", st.text)
+            st = Editor.insert(Editor.insert(EditorState.of(st.text), "+"), ""); st = press(st, "3"); st = press(st, "a⁄b"); st = press(st, "4")
+            eq("(1)/(2)+(3)/(4)", st.text); eq("5/4", Calculator.process(st.text, Workspace(), CalcSettings()).renderText(FormatSettings()))
+        }
         t("every modifier combination yields a full 6x5 grid") {
             for (m in allCombos) {
                 val rows = layer(m)
@@ -80,7 +96,7 @@ object KeypadChecks {
         t("standard layer: digits 0-9 and all required keys") {
             val labels = keys(ModifierState()).map { it.label }.toSet()
             for (d in "0123456789") yes(d.toString() in labels, "missing digit $d")
-            for (l in listOf(".", "+", "−", "×", "÷", "%", "=", "(", ")", "⌫", "AC", "CE", "(−)", "xʸ", "√", "π", "e", "◀", "▶"))
+            for (l in listOf(".", "+", "−", "×", "÷", "%", "=", "(", ")", "⌫", "AC", "CE", "(−)", "xʸ", "√", "π", "a⁄b", "◀", "▶"))
                 yes(l in labels, "missing key $l")
         }
         t("Alt layer: x, y, z and a–g variable keys, symbols") {

@@ -218,7 +218,10 @@ class Solver(private val scope: Scope, private val angle: AngleMode = AngleMode.
 
     fun expand(e: Expr): Outcome {
         val p = builder.build(e)
-        return Outcome(OutcomeKind.ALGEBRA, listOf(Line.Text(p.toText())), listOf("Multiply out all products and collect like terms"), graphExpr = graphOf(p))
+        val steps = ArrayList<String>()
+        Identities.recognize(e)?.let { steps += "Special product: $it" }
+        steps += "Multiply out all products and collect like terms"
+        return Outcome(OutcomeKind.ALGEBRA, listOf(Line.Text(p.toText())), steps, graphExpr = graphOf(p))
     }
 
     fun simplify(e: Expr): Outcome {

@@ -46,6 +46,7 @@ import com.powermath.ui.screens.CalculatorScreen
 import com.powermath.ui.screens.GraphScreen
 import com.powermath.ui.screens.HistoryScreen
 import com.powermath.ui.screens.SettingsScreen
+import com.powermath.ui.screens.ToolsScreen
 import com.powermath.ui.screens.WorkspaceScreen
 import com.powermath.ui.theme.PowerMathTheme
 import com.powermath.viewmodel.CalcViewModel
@@ -103,6 +104,7 @@ fun PowerMathApp(vm: CalcViewModel) {
                 Screen.WORKSPACE -> WorkspaceScreen(vm)
                 Screen.HISTORY -> HistoryScreen(vm) { clipboard.setText(AnnotatedString(it)) }
                 Screen.SETTINGS -> SettingsScreen(vm)
+                Screen.TOOLS -> ToolsScreen(vm)
             }
         }
         DialogHost(vm)

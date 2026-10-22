@@ -188,6 +188,11 @@ class Evaluator(
                 else { var f = BigInteger.ONE; for (i in 2..k.toInt()) f = f.multiply(BigInteger.valueOf(i.toLong())); Value.Q(Rat.of(perm.divide(f), BigInteger.ONE)) }
             }
             "delta" -> Ops.sub(Ops.mul(a[1], a[1]), Ops.mul(Value.of(4), Ops.mul(a[0], a[2])))
+            "arith" -> Sequences.arithTerm(a[0], a[1], a[2])
+            "arithsum" -> Sequences.arithSum(a[0], a[1], a[2])
+            "geom" -> Sequences.geomTerm(a[0], a[1], a[2])
+            "geomsum" -> Sequences.geomSum(a[0], a[1], a[2])
+            "geominf" -> Sequences.geomInfinite(a[0], a[1])
             else -> throw MathError(ErrorKind.UNDEFINED, "Unknown function '$name'")
         }
     }

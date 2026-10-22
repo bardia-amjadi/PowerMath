@@ -120,6 +120,12 @@ class CalcViewModel(app: Application) : AndroidViewModel(app) {
         schedulePreview()
     }
 
+    /** Settings (angle/format) for the Tools screens, which call the core engine directly. */
+    fun toolSettings(): CalcSettings = calcSettings()
+
+    /** Puts [text] in the calculator editor and returns to the calculator. */
+    fun useInCalculator(text: String) { setExpression(text); screen = Screen.CALCULATOR }
+
     fun setExpression(text: String) {
         justEvaluated = false
         updateEditor(EditorState.of(text))
@@ -152,6 +158,7 @@ class CalcViewModel(app: Application) : AndroidViewModel(app) {
             KeyAction.ClearAll -> { justEvaluated = false; updateEditor(Editor.clearAll()); result = ResultState.None }
             KeyAction.Left -> { justEvaluated = false; editor = Editor.left(editor) }
             KeyAction.Right -> { justEvaluated = false; editor = Editor.right(editor) }
+            KeyAction.Fraction -> { justEvaluated = false; updateEditor(Editor.fraction(editor)) }
             KeyAction.Negate -> { justEvaluated = false; updateEditor(Editor.negate(editor)) }
             KeyAction.Equals -> evaluate()
             is KeyAction.Open -> dialog = action.dialog

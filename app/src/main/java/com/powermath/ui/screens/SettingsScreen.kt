@@ -153,7 +153,7 @@ fun SettingsScreen(vm: CalcViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.foundation.Image(
                         androidx.compose.ui.res.painterResource(com.powermath.R.drawable.logo_powermath), contentDescription = "Power Math logo",
-                        modifier = Modifier.size(56.dp).clip(RoundedCornerShape(14.dp))
+                        modifier = Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color(0xFF03144D)).padding(6.dp)
                     )
                     Column(Modifier.padding(start = 12.dp)) {
                         Text("Power Math 1.0", fontWeight = FontWeight.SemiBold)

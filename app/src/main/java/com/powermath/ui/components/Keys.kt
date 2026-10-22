@@ -18,6 +18,8 @@ sealed interface KeyAction {
     data object Left : KeyAction
     data object Right : KeyAction
     data object Negate : KeyAction
+    /** Fraction template: the number before the cursor becomes the numerator. */
+    data object Fraction : KeyAction
     data class Open(val dialog: DialogRequest) : KeyAction
     data class Go(val screen: Screen) : KeyAction
     data object CopyResult : KeyAction
@@ -60,7 +62,7 @@ object KeyLayouts {
         listOf(ins("("), ins(")"), op("%", "%", "Percent"), op("xʸ", "^", "Power"), fn("√", "sqrt(", "Square root")),
         listOf(n("7"), n("8"), n("9"), op("÷", "/", "Divide"), act("CE", KeyAction.ClearEntry, "Clear entry")),
         listOf(n("4"), n("5"), n("6"), op("×", "*", "Multiply"), ins("π", "pi", "Pi")),
-        listOf(n("1"), n("2"), n("3"), op("−", "-", "Subtract"), ins("e", "e", "Euler's number")),
+        listOf(n("1"), n("2"), n("3"), op("−", "-", "Subtract"), KeyDef("a⁄b", KeyAction.Fraction, KeyKind.OPERATOR, description = "Fraction: the number before the cursor becomes the numerator")),
         listOf(n("0"), n("."), act("(−)", KeyAction.Negate, "Negative sign"), op("+", "+", "Add"), ins(",", ",", "Comma"))
     )
 

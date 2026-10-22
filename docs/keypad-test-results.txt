@@ -1,3 +1,6 @@
+Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts -Djavax.net.ssl.trustStoreType=JKS -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35707 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
+PASS fraction key: 3 a?b 4 = 3/4, and ? ? hop over the divider
+PASS fraction key with an empty editor gives an empty template; adding fractions works
 PASS every modifier combination yields a full 6x5 grid
 PASS the 8 modifier combinations are all distinct layers with distinct names
 PASS no decorative keys: every visible key has a working action and a description
@@ -17,4 +20,4 @@ PASS keypad: ? then 9 closes automatically and gives 3; ? key; negative key; pow
 PASS keypad with modifiers: Shift sin, Alt x, '=' key solves
 PASS keypad: quadratic  x^2 - 5x + 6 = 0 typed through the keys
 
-18/18 passed
+20/20 passed

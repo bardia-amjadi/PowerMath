@@ -14,6 +14,13 @@ object Calculator {
         if (text.isEmpty()) throw MathError(ErrorKind.SYNTAX, "Empty expression")
         val stmts = Parser(ws).parseAll(text)
         for (st in stmts) rejectNestedCommands(st)
+        if (stmts.size == 1) autoFunction(stmts[0], text, ws, settings)?.let { (rewritten, body) ->
+            val out = process(rewritten, ws, settings)
+            return out.copy(
+                steps = listOf("The function notation was added automatically: $rewritten") + out.steps,
+                graphExpr = body
+            )
+        }
         val limits = EvalLimits.withTimeoutMs(settings.timeoutMs)
         val solver = Solver(ws, settings.angle)
         if (stmts.size > 1) {
@@ -34,6 +41,45 @@ object Calculator {
             is Expr.Rel -> relation(st, ws, settings, solver, limits)
             else -> plain(st, ws, settings, solver, limits)
         }
+    }
+
+    private val autoNames = listOf("f", "g", "h", "j", "k", "m", "n", "o") + ('a'..'z').map { "f$it" }
+
+    /**
+     * A linear expression in one unknown without function notation ("2x + 3" or "y = 2x + 3") becomes "f(x) = 2x + 3".
+     * Returns the rewritten statement and the body, or null when this does not apply.
+     */
+    private fun autoFunction(st: Expr, text: String, ws: Workspace, s: CalcSettings): Pair<String, String>? {
+        val body: Expr
+        val bodyText: String
+        when {
+            st is Expr.Rel && st.op == RelOp.EQ && st.l is Expr.Var && st.l.name == "y" && ws.variable("y") == null && ws.function("y") == null -> {
+                body = st.r; bodyText = text.substringAfter('=').trim()
+            }
+            st is Expr.Rel || st is Expr.Assign || st is Expr.FuncDefStmt -> return null
+            st is Expr.Call && st.name in Names.commands -> return null
+            else -> { body = st; bodyText = text.trim() }
+        }
+        val free = ExprUtil.freeVars(body).filter { ws.variable(it) == null && it != "ans" }.distinct()
+        if (free.size != 1) return null
+        if (bodyText.isEmpty() || ExprUtil.calledFunctions(body).any { it in Names.commands }) return null
+        val v = free[0]
+        val poly = try { PolyBuilder(ws, s.angle).build(body) } catch (e: MathError) { return null }
+        if (poly.vars() != setOf(v) || poly.degreeIn(v) != 1) return null
+        val name = autoNames.firstOrNull { ws.function(it) == null && ws.variable(it) == null && it != v && it !in Names.reserved } ?: return null
+        return Pair("$name($v) = $bodyText", bodyText)
+    }
+
+    /** Evaluates a plain numeric expression (used by the Tools screens for inputs such as "3/2" or "sqrt(2)"). */
+    fun evalValue(input: String, ws: Workspace, settings: CalcSettings): Value {
+        val text = ExprUtil.balanceParens(input.trim())
+        if (text.isEmpty()) throw MathError(ErrorKind.SYNTAX, "Enter a number")
+        val e = Parser(ws).parse(text)
+        if (e is Expr.Rel || e is Expr.Assign || e is Expr.FuncDefStmt || (e is Expr.Call && e.name in Names.commands))
+            throw MathError(ErrorKind.SYNTAX, "Enter a number or a numeric expression")
+        val free = freeUnbound(e, ws)
+        if (free.isNotEmpty()) throw MathError(ErrorKind.UNDEFINED, "Undefined variable '${free.first()}'")
+        return Evaluator(ws, settings.angle, EvalLimits.withTimeoutMs(settings.timeoutMs)).eval(e)
     }
 
     private fun rejectNestedCommands(st: Expr) {
@@ -126,6 +172,15 @@ object Calculator {
                     val layered = LayeredScope(ws, binds)
                     Solver(layered, s.angle).expand(e)
                 }
+            }
+            "seq" -> {
+                val ev = Evaluator(ws, s.angle, limits)
+                val terms = c.args.map { a ->
+                    val x = ev.eval(a)
+                    (x as? Value.Q)?.r ?: throw MathError(ErrorKind.UNSUPPORTED, "seq() needs rational terms such as 2, 6, 18, 54")
+                }
+                val an = Sequences.analyze(terms)
+                Outcome(OutcomeKind.ALGEBRA, an.lines.map { Line.Text(it) }, an.steps)
             }
             "plot" -> {
                 val inner = text.trim().removePrefix("plot(").removeSuffix(")")

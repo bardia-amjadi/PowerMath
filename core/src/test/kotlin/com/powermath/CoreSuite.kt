@@ -50,7 +50,181 @@ object CoreSuite {
         results.clear()
         basicArithmetic(); percentAndPrecedence(); fractionsAndFormats(); scientificFunctions(); errors()
         variablesAndFunctions(); equations(); inequalities(); systems(); algebraTools(); graphTests(); editorTests(); limits()
+        autoFunctionTests(); sequenceTests(); identityTests(); geometryTests(); unitCircleAndStats()
         return results.toList()
+    }
+
+    // ---------------------------------------------------------------- v1.1 additions
+    private fun autoFunctionTests() {
+        t("linear expression without notation becomes f(x)") {
+            val ws = Workspace()
+            val o = Calculator.process("2x + 3", ws, CalcSettings())
+            yes(o.renderText(fmt()).startsWith("f(x) = 2x + 3"), o.renderText(fmt()))
+            yes(ws.function("f") != null, "f was not saved")
+            eq("2x + 3", o.graphExpr)
+            yes(o.steps.first().contains("added automatically"), o.steps.first())
+            eq("7", calc("f(2)", ws = ws))
+        }
+        t("y = ... gets function notation; next free name is used") {
+            val ws = Workspace()
+            calc("2x + 3", ws = ws)
+            val o = Calculator.process("y = 5x - 1", ws, CalcSettings())
+            yes(o.renderText(fmt()).startsWith("g(x) = 5x - 1"), o.renderText(fmt()))
+            eq("14", calc("g(3)", ws = ws))
+        }
+        t("works with another variable letter and fractions") {
+            val ws = Workspace()
+            val o = Calculator.process("y = t/2 + 1", ws, CalcSettings())
+            yes(o.renderText(fmt()).startsWith("f(t) = t/2 + 1"), o.renderText(fmt()))
+        }
+        t("non-linear and multi-variable expressions are not rewritten") {
+            eq("x^2 + 2x + 1", calc("(x+1)^2"))
+            val ws = Workspace()
+            calc("x + y", ws = ws).let { yes(!it.contains("(saved)"), it) }
+            yes(ws.function("f") == null, "nothing should be saved")
+        }
+        t("equations and plain numbers are untouched") {
+            eq("x = 2", lines("2x + 1 = 5").first())
+            eq("14", calc("2 + 3 × 4"))
+        }
+        t("if y is a variable it is not treated as notation") {
+            val ws = Workspace()
+            calc("y := 4", ws = ws)
+            eq("True", calc("y = 4", ws = ws))
+        }
+    }
+
+    private fun sequenceTests() {
+        t("arith/geom functions") {
+            eq("21", calc("arith(1, 4, 6)")); eq("66", calc("arithsum(1, 4, 6)")); eq("96", calc("geom(3, 2, 6)"))
+            eq("189", calc("geomsum(3, 2, 6)")); eq("6", calc("geominf(3, 1/2)")); eq("3", calc("geomsum(1, 1, 3)"))
+            fails(ErrorKind.DOMAIN, "geominf(1, 2)"); fails(ErrorKind.DOMAIN, "arith(1, 2, 0)"); fails(ErrorKind.DOMAIN, "arith(1, 2, 1.5)")
+            eq("1/2", calc("geom(4, 1/2, 4) / 1 * 1 / 1 + 0 * 1").let { calc("geom(4, 1/2, 4)") })
+        }
+        t("seq detects geometric") {
+            val l = lines("seq(2, 6, 18, 54)")
+            yes(l[0].startsWith("Geometric") && l[0].contains("r = 3"), l[0])
+            yes(l.any { it == "Next terms: 162, 486, 1458" }, l.toString())
+            yes(l.any { it.startsWith("Sum of the 4 given terms = 80") }, l.toString())
+            yes(l.any { it.startsWith("aₙ = 2·3^(n − 1)") }, l.toString())
+        }
+        t("seq detects arithmetic with formula 2n + 1") {
+            val l = lines("seq(3, 5, 7, 9)")
+            yes(l[0].startsWith("Arithmetic") && l[0].contains("d = 2"), l[0])
+            yes(l.any { it.endsWith("= 2n + 1") }, l.toString()); yes(l.any { it == "Next terms: 11, 13, 15" }, l.toString())
+        }
+        t("seq: converging geometric reports infinite sum, fractions allowed") {
+            val l = lines("seq(8, 4, 2, 1)")
+            yes(l.any { it == "Infinite sum S∞ = 16" }, l.toString()); yes(l.any { it == "Next terms: 1/2, 1/4, 1/8" }, l.toString())
+        }
+        t("seq: quadratic and Fibonacci patterns") {
+            val q = lines("seq(2, 5, 10, 17, 26)")
+            yes(q[0].startsWith("Quadratic"), q[0]); yes(q.any { it == "aₙ = n² + 1" }, q.toString()); yes(q.any { it == "Next terms: 37, 50, 65" }, q.toString())
+            val f = lines("seq(1, 1, 2, 3, 5, 8)")
+            yes(f[0].startsWith("Fibonacci"), f[0]); yes(f.any { it == "Next terms: 13, 21, 34" }, f.toString())
+            yes(lines("seq(1, 2, 4, 7, 12, 30)")[0].startsWith("No simple"), "unknown")
+        }
+        t("seq errors") { fails(ErrorKind.SYNTAX, "seq(1, 2)"); fails(ErrorKind.UNSUPPORTED, "seq(1, pi, 3)") }
+        t("seq pattern formulas reproduce the given terms") {
+            val rnd = java.util.Random(7)
+            repeat(30) {
+                val a = rnd.nextInt(11) - 5; val d = rnd.nextInt(7) - 3
+                val terms = (0 until 5).map { Rat.of(a + it * d) }
+                val an = Sequences.analyze(terms)
+                eq("arithmetic", an.kind)
+                val r = rnd.nextInt(4) + 2; val g1 = rnd.nextInt(5) + 1
+                val gt = (0 until 5).map { Rat.of(g1).let { b -> b * Rat.of(r).pow(it) } }
+                eq("geometric", Sequences.analyze(gt).kind)
+            }
+        }
+    }
+
+    private fun identityTests() {
+        t("every listed identity is true (verified by the engine)") {
+            yes(Identities.all.size >= 12, "too few identities")
+            for (id in Identities.all) yes(Identities.verify(id), "identity is false: ${id.name}")
+        }
+        t("every example command in the reference actually runs") {
+            for (id in Identities.all) try { Calculator.process(id.example, Workspace(), CalcSettings()) } catch (e: MathError) { throw AssertionError("${id.name}: ${id.example} -> ${e.message}") }
+        }
+        t("expand names the special product") {
+            val o = Calculator.process("expand((x+3)^2)", Workspace(), CalcSettings())
+            eq("x^2 + 6x + 9", o.renderText(fmt())); yes(o.steps.first().startsWith("Special product: Square of a sum"), o.steps.toString())
+            yes(Calculator.process("expand((x+2)*(x-2))", Workspace(), CalcSettings()).steps.first().contains("Difference of squares"), "dos")
+            eq("x^3 - 6x^2 + 12x - 8", calc("expand((x-2)^3)"))
+        }
+        t("factor handles squares and cubes identities") {
+            eq("(x + 7)(x - 7)", calc("factor(x^2 - 49)"))
+            yes(calc("factor(x^3 - 27)").contains("(x - 3)"), calc("factor(x^3 - 27)"))
+        }
+    }
+
+    private fun geometryTests() {
+        fun rows(s: Shape, vararg p: Int) = Geometry.compute(s, p.map { Value.of(it.toLong()) }).rows.associate { it.first to Formatter.exact(it.second) }
+        t("circle, rectangle, triangle") {
+            val c = rows(Shape.CIRCLE, 3); eq("9π", c["Area"]); eq("6π", c["Circumference"])
+            val r = rows(Shape.RECTANGLE, 3, 4); eq("12", r["Area"]); eq("14", r["Perimeter"]); eq("5", r["Diagonal"])
+            eq("6", rows(Shape.TRIANGLE, 3, 4)["Area"])
+        }
+        t("Heron gives exact surds") {
+            eq("6", rows(Shape.TRIANGLE_SSS, 3, 4, 5)["Area"])
+            eq("√3/4", Formatter.exact(Geometry.compute(Shape.TRIANGLE_SSS, listOf(Value.ONE, Value.ONE, Value.ONE)).rows[0].second))
+        }
+        t("right triangle, trapezoid, rhombus, square diagonal") {
+            eq("5", rows(Shape.RIGHT_TRIANGLE, 3, 4)["Hypotenuse"]); eq("20", rows(Shape.TRAPEZOID, 3, 7, 4)["Area"])
+            eq("24", rows(Shape.RHOMBUS, 6, 8)["Area"]); eq("5", rows(Shape.RHOMBUS, 6, 8)["Side"]); eq("2√2", rows(Shape.SQUARE, 2)["Diagonal"])
+        }
+        t("solids") {
+            eq("36π", rows(Shape.SPHERE, 3)["Volume"]); eq("36π", rows(Shape.SPHERE, 3)["Surface area"])
+            eq("27", rows(Shape.CUBE, 3)["Volume"]); eq("54", rows(Shape.CUBE, 3)["Surface area"]); eq("24", rows(Shape.CUBOID, 2, 3, 4)["Volume"])
+            eq("52", rows(Shape.CUBOID, 2, 3, 4)["Surface area"]); eq("45π", rows(Shape.CYLINDER, 3, 5)["Volume"]); eq("48π", rows(Shape.CYLINDER, 3, 5)["Total surface area"])
+            eq("12π", rows(Shape.CONE, 3, 4)["Volume"]); eq("5", rows(Shape.CONE, 3, 4)["Slant height"])
+            val cone = Geometry.compute(Shape.CONE, listOf(Value.of(3), Value.of(4))).rows.first { it.first == "Lateral area" }.second
+            yes(Math.abs(Ops.toDouble(cone) - 15 * Math.PI) < 1e-9, "cone lateral")
+        }
+        t("sector, ellipse, regular polygons") {
+            eq("3π", rows(Shape.SECTOR, 6, 30)["Area"]); eq("π", rows(Shape.SECTOR, 6, 30)["Arc length"])
+            eq("6π", rows(Shape.ELLIPSE, 2, 3)["Area"])
+            eq("150", rows(Shape.REGULAR_POLYGON, 12, 1)["Interior angle (degrees)"]); eq("16", rows(Shape.REGULAR_POLYGON, 4, 4)["Area"])
+            yes(rows(Shape.REGULAR_POLYGON, 6, 2)["Area"]!!.contains("√3"), "hexagon exact")
+            yes(Math.abs(Ops.toDouble(Geometry.compute(Shape.REGULAR_POLYGON, listOf(Value.of(5), Value.of(2))).rows[1].second) - 6.8819096) < 1e-6, "pentagon")
+        }
+        t("geometry input errors") {
+            for ((s, p) in listOf(Shape.CIRCLE to listOf(0), Shape.CIRCLE to listOf(-1), Shape.TRIANGLE_SSS to listOf(1, 2, 3), Shape.SECTOR to listOf(1, 400), Shape.REGULAR_POLYGON to listOf(2, 1))) {
+                try { Geometry.compute(s, p.map { Value.of(it.toLong()) }); throw AssertionError("expected error for $s $p") } catch (e: MathError) { }
+            }
+        }
+    }
+
+    private fun unitCircleAndStats() {
+        t("evalValue for tool inputs") {
+            eq("3/2", Formatter.exact(Calculator.evalValue("3/2", Workspace(), CalcSettings())))
+            eq("√2", Formatter.exact(Calculator.evalValue("sqrt(2)", Workspace(), CalcSettings())))
+            for (bad in listOf("", "x+1", "x=2", "solve(x=2)")) try { Calculator.evalValue(bad, Workspace(), CalcSettings()); throw AssertionError("expected error for '$bad'") } catch (e: MathError) { }
+        }
+        t("unit circle exact values at special angles") {
+            val p = UnitCircle.at(30)!!
+            eq("π/6", Formatter.exact(p.radians)); eq("√3/2", Formatter.exact(p.cos)); eq("1/2", Formatter.exact(p.sin)); eq("√3/3", Formatter.exact(p.tan!!))
+            val q = UnitCircle.at(135)!!
+            eq("-√2/2", Formatter.exact(q.cos)); eq("√2/2", Formatter.exact(q.sin)); eq("-1", Formatter.exact(q.tan!!))
+            yes(UnitCircle.at(90)!!.tan == null, "tan(90) is undefined"); eq("0", Formatter.exact(UnitCircle.at(0)!!.radians)); eq("2π", Formatter.exact(UnitCircle.at(360)!!.radians))
+            yes(UnitCircle.at(17) == null, "17° has no exact value")
+        }
+        t("unit circle satisfies sin² + cos² = 1 for every special angle") {
+            for (a in UnitCircle.specialAngles) {
+                val p = UnitCircle.at(a)!!
+                val s = Ops.toDouble(p.sin); val c = Ops.toDouble(p.cos)
+                yes(Math.abs(s * s + c * c - 1) < 1e-12, "angle $a")
+                yes(Math.abs(s - Math.sin(Math.toRadians(a.toDouble()))) < 1e-12 && Math.abs(c - Math.cos(Math.toRadians(a.toDouble()))) < 1e-12, "value $a")
+            }
+        }
+        t("statistics") {
+            val st = Stats.analyze(listOf(2, 4, 4, 4, 5, 5, 7, 9).map { Rat.of(it) })
+            eq(Rat.of(5), st.mean); eq(Rat.of(9, 2), st.median); eq(listOf(Rat.of(4)), st.modes); eq(Rat.of(7), st.range)
+            eq(Rat.of(4), st.variancePop); eq("2", Formatter.exact(st.stdPop)); eq(Rat.of(32, 7), st.varianceSample)
+            eq(emptyList<Rat>(), Stats.analyze(listOf(1, 2, 3).map { Rat.of(it) }).modes)
+            try { Stats.analyze(emptyList()); throw AssertionError("empty") } catch (e: MathError) { }
+        }
     }
 
     private fun basicArithmetic() {
@@ -142,7 +316,7 @@ object CoreSuite {
             fails(ErrorKind.NON_REAL, "(-8)^(1/2)"); fails(ErrorKind.DOMAIN, "0^0"); fails(ErrorKind.DIV_ZERO, "0^-1")
         }
         t("undefined names") { fails(ErrorKind.UNDEFINED, "foo(2)"); fails(ErrorKind.UNDEFINED, "zz(1)") }
-        t("free variables in numeric context are kept symbolic") { eq("x + 1", calc("x+1")) }
+        t("free variables in numeric context are kept symbolic (non-linear stays an expression)") { eq("x^2 + 1", calc("x^2+1")); eq("x + 1", calc("simplify(x+1)")) }
     }
 
     private fun variablesAndFunctions() {
@@ -292,7 +466,7 @@ object CoreSuite {
 
     private fun algebraTools() {
         t("free-variable expressions are expanded") {
-            eq("2x + 6", calc("2(x+3)")); eq("3x + 3", calc("3(x+1)")); eq("x^2 - 1", calc("(x+1)(x-1)")); eq("x^2 + 2x + 1", calc("x^2 + 2x + 1")); eq("x + 3", calc("x + 3"))
+            eq("x^2 - 1", calc("(x+1)(x-1)")); eq("x^2 + 2x + 1", calc("x^2 + 2x + 1")); eq("x^2 + 2x", calc("x(x+2)")); eq("2x + 6", calc("expand(2(x+3))"))
         }
         t("expand / simplify") {
             eq("x^2 + 2x + 1", calc("expand((x+1)^2)")); eq("x^3 + 3x^2 + 3x + 1", calc("expand((x+1)^3)")); eq("2x + 6", calc("simplify(2(x+3))"))
@@ -378,6 +552,16 @@ object CoreSuite {
     }
 
     private fun editorTests() {
+        t("Editor.fraction: numerator from number, name or group; function names are not numerators") {
+            eq(EditorState("(12)/()", 6), Editor.fraction(EditorState.of("12")))
+            eq(EditorState("2+(x)/()", 7), Editor.fraction(EditorState.of("2+x")))
+            eq(EditorState("(1+2)/()", 7), Editor.fraction(EditorState.of("(1+2)")))
+            eq(EditorState("sqrt()/()", 5), Editor.fraction(EditorState.of("sqrt")))
+            eq(EditorState("sin(()/()", 5), Editor.fraction(EditorState.of("sin(")))
+            eq(EditorState("()/()", 1), Editor.fraction(EditorState()))
+            eq(EditorState("(3)/()+5", 5), Editor.fraction(EditorState("3+5", 1)))
+        }
+        t("Pretty shows simple fraction templates as a⁄b") { eq("3⁄4+1⁄2", Pretty.format("(3)/(4)+(1)/(2)")) }
         t("insert, cursor movement and backspace") {
             var s = EditorState()
             s = Editor.insert(s, "12"); s = Editor.insert(s, "+"); s = Editor.insert(s, "3"); eq("12+3", s.text)

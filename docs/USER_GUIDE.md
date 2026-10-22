@@ -74,3 +74,40 @@ A hardware keyboard works too: digits and operators type directly, Enter evaluat
 ## Errors
 
 Division by zero, domain errors, syntax errors, undefined names, overflow and timeouts each show a specific message. The expression stays in place so you can correct it.
+
+## Fractions
+
+Press the **a⁄b** key (standard keypad, row 4). If a number, name or bracket is just before the cursor it becomes the numerator and the cursor jumps into the denominator: `3` then **a⁄b** then `4` gives `(3)/(4)` = 3/4.
+On an empty line it inserts an empty `()/()` template. The ◀ ▶ keys hop across the divider in one step.
+Exact results that are fractions are shown stacked (numerator over denominator).
+
+## Automatic function notation
+
+A linear expression in one unknown without function notation is turned into a function and saved automatically:
+
+| You type | You get |
+|---|---|
+| `2x + 3` | `f(x) = 2x + 3` (saved, with a Graph button) |
+| `y = 5x - 1` | `g(x) = 5x - 1` (next free name) |
+| `y = t/2 + 1` | `f(t) = t/2 + 1` |
+
+Non-linear expressions such as `(x+1)^2` are still expanded as before, and equations like `2x + 1 = 5` are still solved.
+
+## Sequences and patterns
+
+- `arith(a₁, d, n)`, `arithsum(a₁, d, n)`: n-th term and sum of an arithmetic sequence
+- `geom(a₁, r, n)`, `geomsum(a₁, r, n)`, `geominf(a₁, r)`: geometric term, sum, and sum to infinity (|r| < 1)
+- `seq(2, 6, 18, 54)`: detects arithmetic, geometric, quadratic and Fibonacci-type patterns and shows the formula, the next terms and sums
+
+## Algebraic identities (special products)
+
+`expand((x+3)^2)` names the identity it used. The **Tools → Identities** list has 15 identities (squares, cubes, higher powers, products) and a **Use** button that puts a ready example in the calculator. Every identity in the list is checked by the engine itself.
+
+## Tools screen
+
+Open it from the **Tools** chip on the calculator.
+- **Unit circle:** slide or tap to pick an angle; exact sin, cos, tan and the radian value at multiples of 30° and 45°, approximate values elsewhere.
+- **Shapes:** 12 flat shapes and 5 solids; enter sizes (fractions and √ allowed) to get areas, perimeters, volumes and surface areas, exact where possible, with a drawing.
+- **Charts:** bar, line and pie charts from your own numbers or `label:value` pairs, plus count, sum, mean, median, mode, range, variance and standard deviation.
+- **Sequences:** pattern finder and a generator for arithmetic and geometric sequences.
+- **Identities:** the special-product reference.

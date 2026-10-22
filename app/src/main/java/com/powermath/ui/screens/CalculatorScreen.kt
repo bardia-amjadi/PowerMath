@@ -3,7 +3,11 @@ package com.powermath.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -85,9 +89,11 @@ fun CalculatorScreen(vm: CalcViewModel, onCopy: (String) -> Unit, onPaste: () ->
                     desc = "Result format. Tap to change between fraction, decimal and scientific")
                 Spacer(Modifier.weight(1f))
                 Chip("Graph", { vm.openGraph(vm.editor.text) })
+                Chip("Tools", { vm.screen = Screen.TOOLS })
                 Box {
                     Chip("Menu ▾", { menuOpen = true }, desc = "More: history, workspace, settings")
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(text = { Text("Tools: unit circle, shapes, charts, sequences") }, onClick = { menuOpen = false; vm.screen = Screen.TOOLS })
                         DropdownMenuItem(text = { Text("History") }, onClick = { menuOpen = false; vm.screen = Screen.HISTORY })
                         DropdownMenuItem(text = { Text("Workspace (variables & functions)") }, onClick = { menuOpen = false; vm.screen = Screen.WORKSPACE })
                         DropdownMenuItem(text = { Text("Settings") }, onClick = { menuOpen = false; vm.screen = Screen.SETTINGS })
@@ -162,6 +168,11 @@ private fun ResultCard(vm: CalcViewModel, fmt: FormatSettings, textScale: Float,
                 val multi = lines.size > 1
                 Column(Modifier.fillMaxWidth().heightIn(max = 150.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.End) {
                     for (l in lines) {
+                        val frac = if (multi) null else Regex("^(-?[0-9]+)/([0-9]+)$").matchEntire(l)
+                        if (frac != null) {
+                            StackedFraction(frac.groupValues[1], frac.groupValues[2], (if (l.length > 10) 30.sp else 40.sp) * textScale, cs.onSurface)
+                            continue
+                        }
                         Text(
                             l,
                             fontSize = (if (multi) 22.sp else if (l.length > 16) 28.sp else 40.sp) * textScale,
@@ -185,5 +196,18 @@ private fun ResultCard(vm: CalcViewModel, fmt: FormatSettings, textScale: Float,
                 }
             }
         }
+    }
+}
+
+/** Exact fractions in the result are shown stacked: numerator over a bar over the denominator. */
+@Composable
+private fun StackedFraction(num: String, den: String, size: androidx.compose.ui.unit.TextUnit, color: androidx.compose.ui.graphics.Color) {
+    Column(
+        Modifier.width(IntrinsicSize.Max).padding(vertical = 4.dp).semantics { contentDescription = "Result: $num over $den" },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(num, fontSize = size, fontWeight = FontWeight.Light, color = color)
+        Box(Modifier.fillMaxWidth().height(2.dp).background(color.copy(alpha = 0.8f)))
+        Text(den, fontSize = size, fontWeight = FontWeight.Light, color = color)
     }
 }

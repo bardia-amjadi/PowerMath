@@ -52,8 +52,39 @@ object Editor {
     }
 
     fun clearAll(): EditorState = EditorState("", 0)
-    fun left(s: EditorState) = s.copy(cursor = (s.cursor - 1).coerceAtLeast(0))
-    fun right(s: EditorState) = s.copy(cursor = (s.cursor + 1).coerceAtMost(s.text.length))
+    /** Moving across the ")/(" between a fraction's numerator and denominator takes one step. */
+    fun left(s: EditorState): EditorState {
+        val c = s.cursor.coerceIn(0, s.text.length)
+        val step = if (s.text.substring(0, c).endsWith(")/(")) 3 else 1
+        return s.copy(cursor = (c - step).coerceAtLeast(0))
+    }
+    fun right(s: EditorState): EditorState {
+        val c = s.cursor.coerceIn(0, s.text.length)
+        val step = if (s.text.substring(c).startsWith(")/(")) 3 else 1
+        return s.copy(cursor = (c + step).coerceAtMost(s.text.length))
+    }
+
+    private val numeratorBefore = Regex("([0-9.]+|[A-Za-z_]+|\\([^()]*\\))$")
+
+    /**
+     * The fraction key. With a number, name or (group) just before the cursor it becomes the numerator and the cursor
+     * moves into the denominator: "3" -> "(3)/(|)". With nothing before it inserts an empty "(|)/()" template.
+     */
+    fun fraction(s: EditorState): EditorState {
+        val c = s.cursor.coerceIn(0, s.text.length)
+        val before = s.text.substring(0, c)
+        val after = s.text.substring(c)
+        val m = numeratorBefore.find(before)
+        val isFunctionCall = m != null && m.value.startsWith("(") && Regex("[A-Za-z_]$").containsMatchIn(before.substring(0, m.range.first))
+        if (m == null || isFunctionCall || (m.value.all { it.isLetter() || it == '_' } && m.value in Names.functions)) {
+            val t = before + "()/()" + after
+            return EditorState(t, before.length + 1)
+        }
+        val prefix = before.substring(0, m.range.first)
+        val num = if (m.value.startsWith("(")) m.value else "(${m.value})"
+        val t = prefix + num + "/()" + after
+        return EditorState(t, prefix.length + num.length + 2)
+    }
 
     /** The (-) key: toggles the sign of the number before the cursor, otherwise inserts a unary minus. */
     fun negate(s: EditorState): EditorState {
@@ -83,6 +114,7 @@ object Pretty {
         s = Regex("(?<![A-Za-z_])pi(?![A-Za-z_])").replace(s, "π")
         s = Regex("\\^(-?[0-9]+)").replace(s) { m -> m.groupValues[1].map { sup[it] ?: it }.joinToString("") }
         s = s.replace("<=", "≤").replace(">=", "≥").replace("!=", "≠")
+        s = Regex("\\(([0-9A-Za-z_.]+)\\)/\\(([0-9A-Za-z_.]+)\\)").replace(s) { "${it.groupValues[1]}⁄${it.groupValues[2]}" }
         s = s.replace('*', '×').replace('/', '÷').replace('-', '−')
         return s
     }

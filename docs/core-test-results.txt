@@ -1,3 +1,4 @@
+Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts -Djavax.net.ssl.trustStoreType=JKS -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35707 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
 PASS 2 + 3 ? 4 = 14
 PASS (2 + 3) ? 4 = 20
 PASS ascii operators and unicode minus/divide
@@ -30,7 +31,7 @@ PASS delta function
 PASS syntax errors are reported, not thrown as crashes
 PASS domain errors
 PASS undefined names
-PASS free variables in numeric context are kept symbolic
+PASS free variables in numeric context are kept symbolic (non-linear stays an expression)
 PASS variables: a = 5 then a + 2 = 7
 PASS functions: f(x) = x^2 + 1, f(3) = 10
 PASS multi-argument and composed functions
@@ -86,6 +87,8 @@ PASS annotations: irrational roots computed, non-polynomials have none
 PASS auto viewport contains the interesting points
 PASS viewport pan and zoom keep the focus point fixed
 PASS ticks and labels
+PASS Editor.fraction: numerator from number, name or group; function names are not numerators
+PASS Pretty shows simple fraction templates as a?b
 PASS insert, cursor movement and backspace
 PASS backspace removes whole function tokens, clear entry removes whole entries
 PASS negate key toggles sign of the number before the cursor
@@ -97,5 +100,32 @@ PASS recursion limits for user functions are enforced
 PASS rational arithmetic invariants
 PASS quadratic roots are consistent with delta for many coefficient sets
 PASS random polynomial equations: exact roots satisfy the equation
+PASS linear expression without notation becomes f(x)
+PASS y = ... gets function notation; next free name is used
+PASS works with another variable letter and fractions
+PASS non-linear and multi-variable expressions are not rewritten
+PASS equations and plain numbers are untouched
+PASS if y is a variable it is not treated as notation
+PASS arith/geom functions
+PASS seq detects geometric
+PASS seq detects arithmetic with formula 2n + 1
+PASS seq: converging geometric reports infinite sum, fractions allowed
+PASS seq: quadratic and Fibonacci patterns
+PASS seq errors
+PASS seq pattern formulas reproduce the given terms
+PASS every listed identity is true (verified by the engine)
+PASS every example command in the reference actually runs
+PASS expand names the special product
+PASS factor handles squares and cubes identities
+PASS circle, rectangle, triangle
+PASS Heron gives exact surds
+PASS right triangle, trapezoid, rhombus, square diagonal
+PASS solids
+PASS sector, ellipse, regular polygons
+PASS geometry input errors
+PASS evalValue for tool inputs
+PASS unit circle exact values at special angles
+PASS unit circle satisfies sin? + cos? = 1 for every special angle
+PASS statistics
 
-99/99 passed
+128/128 passed

@@ -41,7 +41,7 @@ class LayeredScope(private val base: Scope, private val vars: Map<String, Value>
 
 object Names {
     val constants = setOf("pi", "e", "phi", "tau")
-    val commands = setOf("solve", "simplify", "expand", "factor", "eval", "quad", "plot")
+    val commands = setOf("solve", "simplify", "expand", "factor", "eval", "quad", "plot", "seq")
     val functions: Map<String, IntRange> = mapOf(
         "sqrt" to 1..1, "root" to 2..2, "abs" to 1..1,
         "sin" to 1..1, "cos" to 1..1, "tan" to 1..1,
@@ -51,7 +51,8 @@ object Names {
         "mean" to 1..64, "min" to 1..64, "max" to 1..64,
         "floor" to 1..1, "ceil" to 1..1, "sgn" to 1..1,
         "fact" to 1..1, "gcd" to 2..2, "lcm" to 2..2, "mod" to 2..2,
-        "ncr" to 2..2, "npr" to 2..2, "delta" to 3..3
+        "ncr" to 2..2, "npr" to 2..2, "delta" to 3..3,
+        "arith" to 3..3, "arithsum" to 3..3, "geom" to 3..3, "geomsum" to 3..3, "geominf" to 2..2
     )
     val reserved: Set<String> = constants + commands + functions.keys + setOf("ans")
 

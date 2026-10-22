@@ -83,7 +83,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Image(
                 painterResource(R.drawable.logo_powermath), contentDescription = "Power Math logo", contentScale = ContentScale.Fit,
-                modifier = Modifier.widthIn(max = 260.dp).fillMaxWidth(0.62f).clip(RoundedCornerShape(36.dp))
+                modifier = Modifier.widthIn(max = 300.dp).fillMaxWidth(0.7f)
                     .graphicsLayer { alpha = appAlpha.value; scaleX = appScale.value; scaleY = appScale.value }
             )
             Spacer(Modifier.weight(1f))
